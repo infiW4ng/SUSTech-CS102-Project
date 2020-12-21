@@ -19,7 +19,7 @@ public class GameController implements InputListener, Listenable<GameStateListen
     private final ChessBoardComponent view;
     private final ChessBoard model;
 
-    private Integer rolledNumber;
+    private Integer[] diceStat;
     private int currentPlayer;
 
     public GameController(ChessBoardComponent chessBoardComponent, ChessBoard chessBoard) {
@@ -44,24 +44,49 @@ public class GameController implements InputListener, Listenable<GameStateListen
 
     public void initializeGame() {
         model.placeInitialPieces();
-        rolledNumber = null;
+        diceStat = null;
         currentPlayer = 0;
         listenerList.forEach(listener -> listener.onPlayerStartRound(currentPlayer));
     }
 
-    public int rollDice() {
-        if (rolledNumber == null) {
-            return rolledNumber = RandomUtil.nextInt(1, 6);
+    public Integer[] rollDice() {
+        if (diceStat == null) {
+            diceStat = new Integer[7];
+            diceStat[0] = null;
+            diceStat[1] = RandomUtil.nextInt(1, 6);
+            diceStat[2] = RandomUtil.nextInt(1, 6);
+            diceStat[3] = this.diceStat[1] + this.diceStat[2];
+            diceStat[4] = this.diceStat[1] - this.diceStat[2];
+            diceStat[5] = (this.diceStat[1] * this.diceStat[2] <= 12 ? this.diceStat[1] * this.diceStat[2] : 12);
+            diceStat[6] = ((this.diceStat[1]%this.diceStat[2]) == 0 ? (this.diceStat[1]/this.diceStat[2]) : null);
+            return diceStat;
         } else {
-            return -1;
+            return null;
         }
     }
 
+    public boolean opDice(int op) {
+        if (diceStat != null && diceStat[op] != null) {
+            diceStat[0] = diceStat[op];
+            return true;
+        } else {
+            return false;
+        }
+    }
+
+    public Integer[] getDice() {
+        return diceStat;
+    }
+
     public int nextPlayer() {
-        rolledNumber = null;
+        diceStat = null;
         return currentPlayer = (currentPlayer + 1) % 4;
     }
 
+    public void setDice(int i) {
+        diceStat = new Integer[1];
+        diceStat[0] = i;
+    }
 
     @Override
     public void onPlayerClickSquare(ChessBoardLocation location, SquareComponent component) {
@@ -70,10 +95,11 @@ public class GameController implements InputListener, Listenable<GameStateListen
 
     @Override
     public void onPlayerClickChessPiece(ChessBoardLocation location, ChessComponent component) {
-        if (rolledNumber != null) {
+        System.out.println("clicked " + location.getColor() + "," + location.getIndex());
+        if (diceStat != null && diceStat[0] != null && location.getIndex() <= -1 + model.getDimension() + model.getEndDimension() - 1) {
             ChessPiece piece = model.getChessPieceAt(location);
             if (piece.getPlayer() == currentPlayer) {
-                model.moveChessPiece(location, rolledNumber, true);
+                model.moveChessPiece(location, diceStat[0], true);
                 listenerList.forEach(listener -> listener.onPlayerEndRound(currentPlayer));
                 nextPlayer();
                 listenerList.forEach(listener -> listener.onPlayerStartRound(currentPlayer));

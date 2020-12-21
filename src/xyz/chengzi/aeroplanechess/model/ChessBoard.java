@@ -9,17 +9,16 @@ public class ChessBoard implements Listenable<ChessBoardListener> {
     private final List<ChessBoardListener> listenerList = new ArrayList<>();
     private final Square[][] grid;
     private final LinkedList<ChessPiece>[] hangar;
-    private final Square[] runway;
+    private final int[] landing;
     private final int dimension, endDimension;
-    private final int shortcutJmp = 4, shortcutDest = shortcutJmp + 3, shortcutKick = 15;
+    private final int shortcutJmp = 5, shortcutDest = shortcutJmp + 3, shortcutKick = 16;
 
     public ChessBoard(int dimension, int endDimension) {
         this.grid = new Square[4][dimension + endDimension];
         this.hangar = new LinkedList[4];
-        this.runway = new Square[4];
+        this.landing = new int[4];
         for (int i = 0; i < 4; i++) {
             hangar[i] = new LinkedList<>();
-            runway[i] = new Square(new ChessBoardLocation(i, -1));
         }
         this.dimension = dimension;
         this.endDimension = endDimension;
@@ -76,10 +75,14 @@ public class ChessBoard implements Listenable<ChessBoardListener> {
 //        grid[1][15].setPiece(hangar[1].pop());
 //        grid[2][15].setPiece(hangar[2].pop());
 //        grid[3][15].setPiece(hangar[3].pop());
-        setChessPieceAt(new ChessBoardLocation(0, 15), hangar[0].pop());
-        setChessPieceAt(new ChessBoardLocation(1, 15), hangar[1].pop());
-        setChessPieceAt(new ChessBoardLocation(2, 15), hangar[2].pop());
-        setChessPieceAt(new ChessBoardLocation(3, 15), hangar[3].pop());
+        setChessPieceAt(new ChessBoardLocation(0, 16), hangar[0].pop());
+        setChessPieceAt(new ChessBoardLocation(1, 16), hangar[1].pop());
+        setChessPieceAt(new ChessBoardLocation(2, 16), hangar[2].pop());
+        setChessPieceAt(new ChessBoardLocation(3, 16), hangar[3].pop());
+        setChessPieceAt(new ChessBoardLocation(0, 12), hangar[0].pop());
+        setChessPieceAt(new ChessBoardLocation(1, 12), hangar[1].pop());
+        setChessPieceAt(new ChessBoardLocation(2, 12), hangar[2].pop());
+        setChessPieceAt(new ChessBoardLocation(3, 12), hangar[3].pop());
         listenerList.forEach(listener -> listener.onChessBoardReload(this));
     }
 
@@ -120,16 +123,23 @@ public class ChessBoard implements Listenable<ChessBoardListener> {
     }
 
     public void moveChessPiece(ChessBoardLocation src, int steps, boolean recur) {
+        ChessBoardLocation s = src;
         ChessBoardLocation dest = src;
-        int color = getChessPieceAt(src).getPlayer();
+        int player = getChessPieceAt(src).getPlayer();
 
         // FIXME: This just naively move the chess forward without checking anything
-        for (int i = 0; i < steps; i++) {
-            dest = nextLocationNorm(dest, color);
-        }
+        do {
+            boolean[] flagDir = new boolean[1]; flagDir[0] = true;
+            for (int i = 0; i < steps; i++) {
+                dest = dest.getIndex() <= dimension - 1 ? nextLocationNorm(dest, player)
+                                                        : nextLocationEnd(dest, player, flagDir);
+            }
+        } while(false);
+
+        if (dest.getColor() == s.getColor() && dest.getIndex() == s.getIndex()) return;
         if(getChessPieceAt(dest) != null) {
-            if (getChessPieceAt(dest).getPlayer() == color) {
-                setChessPieceAt(dest, new ChessPiece(color, removeChessPieceAt(src).getStack() + getChessPieceAt(dest).getStack()));
+            if (getChessPieceAt(dest).getPlayer() == player) {
+                setChessPieceAt(dest, new ChessPiece(player, removeChessPieceAt(src).getStack() + getChessPieceAt(dest).getStack()));
             } else {
                 kickChessPieceAt(dest);
                 setChessPieceAt(dest, removeChessPieceAt(src));
@@ -137,38 +147,47 @@ public class ChessBoard implements Listenable<ChessBoardListener> {
         } else {
                 setChessPieceAt(dest, removeChessPieceAt(src));
         }
-        if(dest.getColor() == color) {
+        if(dest.getColor() == player) {
             if (dest.getIndex() == shortcutJmp) {
-                kickChessPieceAt(new ChessBoardLocation((color + 2) % 4, shortcutKick));
-                setChessPieceAt(new ChessBoardLocation(color, shortcutDest), removeChessPieceAt(dest));
+                kickChessPieceAt(new ChessBoardLocation((player + 2) % 4, shortcutKick));
+                setChessPieceAt(new ChessBoardLocation(player, shortcutDest), removeChessPieceAt(dest));
                 recur = false;
             }
-            if (recur) {
-                if (dest.getIndex() < dimension - 1) {
-                    moveChessPiece(dest, 4, false);
-                } else {
-                    moveChessPiece(dest, 1, false);
-                }
-            }
+            if (recur && dest.getIndex() < dimension - 1) moveChessPiece(dest, 4, false);
         }
     }
 
-    public ChessBoardLocation nextLocation(ChessBoardLocation location, int color, boolean direction) {
+    public int getCountOn(int player) {
+        return 4 - hangar[player].size();
+    }
+
+    public ChessBoardLocation nextLocation(ChessBoardLocation location, int color, int steps, boolean[] flagDir) {
         return location.getIndex() <= (dimension - 1) ? nextLocationNorm(location, color)
-                                                      : nextLocationEnd(location, color, direction);
+                                                      : nextLocationEnd(location, color, flagDir);
     }
 
     public ChessBoardLocation nextLocationNorm(ChessBoardLocation location, int color) {
-        return location.getIndex() <= (dimension - 1) ? location.getIndex() < (dimension - 1) ? location.getIndex() < 3  ? new ChessBoardLocation((location.getColor() + 1) % 4, location.getIndex() + 10)
-                                                                                                                         : new ChessBoardLocation((location.getColor() + 1) % 4, location.getIndex() - 3)
-                                                                                              : color == location.getColor() ? new ChessBoardLocation(location.getColor(), location.getIndex() + 1)
-                                                                                                                             : new ChessBoardLocation((location.getColor() + 1) % 4, location.getIndex() - 3)
-                                                      : new ChessBoardLocation(location.getColor(), location.getIndex() + 1);
+        return location.getIndex() <= 0 ? new ChessBoardLocation(color, location.getIndex() + 1)
+                                        : location.getIndex() <= (dimension - 1) ? location.getIndex() < (dimension - 1) ? location.getIndex() <= 3  ? new ChessBoardLocation((location.getColor() + 1) % 4, location.getIndex() + 10)
+                                                                                                                                                     : new ChessBoardLocation((location.getColor() + 1) % 4, location.getIndex() - 3)
+                                                                                                                         : color == location.getColor() ? new ChessBoardLocation(location.getColor(), location.getIndex() + 1)
+                                                                                                                                                        : new ChessBoardLocation((location.getColor() + 1) % 4, location.getIndex() - 3)
+                                                                                 : new ChessBoardLocation(location.getColor(), location.getIndex() + 1);
     }
 
-    public ChessBoardLocation nextLocationEnd(ChessBoardLocation location, int color, boolean direction) {
-        return direction ? new ChessBoardLocation(location.getColor(), location.getIndex() + 1)
-                         : new ChessBoardLocation(location.getColor(), location.getIndex() - 1);
+    public ChessBoardLocation nextLocationNormVersa(ChessBoardLocation location, int color) {
+        return location.getIndex() >= 0 ? location.getIndex() > 0 ? location.getIndex() >= 11  ? new ChessBoardLocation((location.getColor() - 1) % 4, location.getIndex() - 10)
+                                                                                               : new ChessBoardLocation((location.getColor() - 1) % 4, location.getIndex() + 3)
+                                                                  : color == location.getColor() ? new ChessBoardLocation(location.getColor(), location.getIndex() - 1)
+                                                                                                 : new ChessBoardLocation((location.getColor() - 1) % 4, location.getIndex() - 3)
+                                        : new ChessBoardLocation(location.getColor(), 0);
+    }
+
+    public ChessBoardLocation nextLocationEnd(ChessBoardLocation location, int color, boolean[] flagDir) {
+        if (location.getIndex() <= dimension && !flagDir[0]) flagDir[0] = !flagDir[0];
+        if (location.getIndex() >= -1 + dimension + endDimension && flagDir[0]) flagDir[0] = !flagDir[0];
+        return flagDir[0] ? new ChessBoardLocation(location.getColor(), location.getIndex() + 1)
+                          : new ChessBoardLocation(location.getColor(), location.getIndex() - 1);
     }
 
     public int deltaPos(int colorA, int colorB)
