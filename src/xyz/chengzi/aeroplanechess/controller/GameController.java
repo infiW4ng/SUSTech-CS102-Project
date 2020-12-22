@@ -20,11 +20,13 @@ public class GameController implements InputListener, Listenable<GameStateListen
     private final ChessBoard model;
 
     private Integer[] diceStat;
-    private int currentPlayer;
+    private int playerCurrent;
+    private Integer playerWon;
 
     public GameController(ChessBoardComponent chessBoardComponent, ChessBoard chessBoard) {
         this.view = chessBoardComponent;
         this.model = chessBoard;
+        this.diceStat = null; this.playerWon = null;
 
         view.registerListener(this);
         model.registerListener(view);
@@ -38,15 +40,16 @@ public class GameController implements InputListener, Listenable<GameStateListen
         return model;
     }
 
-    public int getCurrentPlayer() {
-        return currentPlayer;
+    public int getPlayerCurrent() {
+        return playerCurrent;
     }
+
+    public Integer getPlayerWon() { return playerWon; }
 
     public void initializeGame() {
         model.placeInitialPieces();
-        diceStat = null;
-        currentPlayer = 0;
-        listenerList.forEach(listener -> listener.onPlayerStartRound(currentPlayer));
+        diceStat = null; playerWon = null; playerCurrent = 0;
+        listenerList.forEach(listener -> listener.onPlayerStartRound(playerCurrent, null));
     }
 
     public Integer[] rollDice() {
@@ -80,7 +83,7 @@ public class GameController implements InputListener, Listenable<GameStateListen
 
     public int nextPlayer() {
         diceStat = null;
-        return currentPlayer = (currentPlayer + 1) % 4;
+        return playerCurrent = (playerCurrent + 1) % 4;
     }
 
     public void setDice(int i) {
@@ -98,11 +101,13 @@ public class GameController implements InputListener, Listenable<GameStateListen
         System.out.println("clicked " + location.getColor() + "," + location.getIndex());
         if (diceStat != null && diceStat[0] != null && location.getIndex() <= -1 + model.getDimension() + model.getEndDimension() - 1) {
             ChessPiece piece = model.getChessPieceAt(location);
-            if (piece.getPlayer() == currentPlayer) {
+            if (piece.getPlayer() == playerCurrent) {
                 model.moveChessPiece(location, diceStat[0], true);
-                listenerList.forEach(listener -> listener.onPlayerEndRound(currentPlayer));
+                listenerList.forEach(listener -> listener.onPlayerEndRound(playerCurrent));
+                for(int i = 0; i < 4; i++)
+                    if (model.getChessPieceAt(new ChessBoardLocation(i, -1 + model.getDimension() + model.getEndDimension())).getStack() >= 4) { playerWon = (Integer) i; break; }
                 nextPlayer();
-                listenerList.forEach(listener -> listener.onPlayerStartRound(currentPlayer));
+                listenerList.forEach(listener -> listener.onPlayerStartRound(playerCurrent, playerWon));
             }
         }
     }

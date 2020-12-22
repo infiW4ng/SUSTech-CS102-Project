@@ -34,18 +34,22 @@ public class GameFrame extends JFrame implements GameStateListener {
         JButton buttonMul = new JButton("*");
         JButton buttonDiv = new JButton("/");
         buttonRoll.addActionListener((e) -> {
+            if (controller.getPlayerWon() != null) {
+                controller.initializeGame();
+                return;
+            }
             if (diceSelectorComponent.isRandomDice()) {
                 Integer[] dice = controller.rollDice();
                 if (dice != null) {
                     statusLabel.setText(String.format("[%s] Rolled a %c %c (%d %d) | Choose Op",
-                            PLAYER_NAMES[controller.getCurrentPlayer()], '\u267F' + dice[1], '\u267F' + dice[2], dice[1], dice[2]));
+                            PLAYER_NAMES[controller.getPlayerCurrent()], '\u267F' + dice[1], '\u267F' + dice[2], dice[1], dice[2]));
                 } else {
                     JOptionPane.showMessageDialog(this, "You have already rolled the dice");
                 }
             } else {
                 controller.setDice((Integer)diceSelectorComponent.getSelectedDice());
                 statusLabel.setText(String.format("[%s] Ordered | Move %d steps",
-                        PLAYER_NAMES[controller.getCurrentPlayer()], controller.getDice()[0]));
+                        PLAYER_NAMES[controller.getPlayerCurrent()], controller.getDice()[0]));
             }
         });
         buttonAdd.addActionListener((e) -> {
@@ -53,7 +57,7 @@ public class GameFrame extends JFrame implements GameStateListener {
             if (dice != null && dice[3] != null) {
                 controller.opDice(3);
                 statusLabel.setText(String.format("[%s] Rolled a %c %c (%d %d) | Move %d steps",
-                        PLAYER_NAMES[controller.getCurrentPlayer()], '\u267F' + dice[1], '\u267F' + dice[2], dice[1], dice[2], dice[3]));
+                        PLAYER_NAMES[controller.getPlayerCurrent()], '\u267F' + dice[1], '\u267F' + dice[2], dice[1], dice[2], dice[3]));
             } else {
                 JOptionPane.showMessageDialog(this, "Illegal Operation");
             }
@@ -63,7 +67,7 @@ public class GameFrame extends JFrame implements GameStateListener {
             if (dice != null && dice[4] != null) {
                 controller.opDice(4);
                 statusLabel.setText(String.format("[%s] Rolled a %c %c (%d %d) | Move %d steps",
-                        PLAYER_NAMES[controller.getCurrentPlayer()], '\u267F' + dice[1], '\u267F' + dice[2], dice[1], dice[2], dice[4]));
+                        PLAYER_NAMES[controller.getPlayerCurrent()], '\u267F' + dice[1], '\u267F' + dice[2], dice[1], dice[2], dice[4]));
             } else {
                 JOptionPane.showMessageDialog(this, "Illegal Operation");
             }
@@ -73,7 +77,7 @@ public class GameFrame extends JFrame implements GameStateListener {
             if (dice != null && dice[5] != null) {
                 controller.opDice(5);
                 statusLabel.setText(String.format("[%s] Rolled a %c %c (%d %d) | Move %d steps",
-                        PLAYER_NAMES[controller.getCurrentPlayer()], '\u267F' + dice[1], '\u267F' + dice[2], dice[1], dice[2], dice[5]));
+                        PLAYER_NAMES[controller.getPlayerCurrent()], '\u267F' + dice[1], '\u267F' + dice[2], dice[1], dice[2], dice[5]));
             } else {
                 JOptionPane.showMessageDialog(this, "Illegal Operation");
             }
@@ -83,7 +87,7 @@ public class GameFrame extends JFrame implements GameStateListener {
             if (dice != null && dice[6] != null) {
                 controller.opDice(6);
                 statusLabel.setText(String.format("[%s] Rolled a %c %c (%d %d) | Move %d steps",
-                        PLAYER_NAMES[controller.getCurrentPlayer()], '\u267F' + dice[1], '\u267F' + dice[2], dice[1], dice[2], dice[6]));
+                        PLAYER_NAMES[controller.getPlayerCurrent()], '\u267F' + dice[1], '\u267F' + dice[2], dice[1], dice[2], dice[6]));
             } else {
                 JOptionPane.showMessageDialog(this, "Illegal Operation");
             }
@@ -113,8 +117,12 @@ public class GameFrame extends JFrame implements GameStateListener {
 
 
     @Override
-    public void onPlayerStartRound(int player) {
+    public void onPlayerStartRound(int player, Integer playerWon) {
         statusLabel.setText(String.format("[%s] Please roll the dice", PLAYER_NAMES[player]));
+        if (playerWon != null) {
+            JOptionPane.showMessageDialog(this, String.format("[%s] Won the game! ", PLAYER_NAMES[playerWon]));
+            statusLabel.setText(String.format("[%s] Won, roll again to reset", PLAYER_NAMES[playerWon]));
+        }
     }
 
     @Override
